@@ -44,12 +44,37 @@ library(igraph)
   new_g <- graph_from_data_frame(el, directed = FALSE, vertices = attrs)  
 
   # Connect in one node:
-  new_g <- add.edges(new_g, c(8, 9, 16, 17, 24, 1))
+  new_g <- add.edges(new_g, c(3, 11, 19, 3))
   
-  plot(new_g, layout = layout.circle(new_g))
+  layout.circle(graph_full)
+  
+  layout.circle(graph_full)
+  
+  layout_in_circles <- function(g, group=3) {
+    layout <- lapply(split(V(g), group), function(x) {
+      layout_in_circle(induced_subgraph(g,x))
+    })
+    # layout <- Map(`*`, layout, seq_along(layout))
+    layout <- lapply(1:length(unique(group)), FUN = function(lay){
+      # print(lay)
+      laycur <- layout[[lay]]
+      laycur[,1] <- laycur[,1] + (lay - 1) * 3  # add offset.
+      # laycur[,2] <- laycur[,2]
+      return(laycur)
+    })
+    x <- matrix(0, nrow=vcount(g), ncol=2)
+    split(x, group) <- layout
+    x[,1] <- x[,1]/max(x[,1])
+    x
+  }
+  
+  plot(new_g, 
+       layout = layout_in_circles(new_g, 
+                                  group = cut(V(new_g), 
+                                              breaks = seq(0, max(V(new_g)), by = nodefull))))
   
   plot(rewire(new_g, with = each_edge(prob = 0.1)),
-       layout = layout.circle(new_g))
+       layout = layout_in_circles(new_g))
   
   # TODO: check component_wise()
   
