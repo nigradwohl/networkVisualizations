@@ -31,7 +31,7 @@ ui <- fluidPage(
                         "n(nodes):",
                         min = 2,
                         max = 100,
-                        value = 30),
+                        value = 15),
             
             sliderInput("p_rewire",
                         "p(rewire):",
@@ -69,7 +69,7 @@ server <- function(input, output) {
             # TODO: Make the ring lattice flexible!
         
         g <- switch(input$graph,
-                    "Ring lattice" = make_chordal_ring(n = 30,  # input$n,
+                    "Ring lattice" = make_chordal_ring(n = 15,  # input$n,
                                                        matrix(rep(3, 3), nr = 1)),
                     "Preferential attachment" = sample_pa(n = input$n, 
                                                           power = 3, directed = FALSE))
