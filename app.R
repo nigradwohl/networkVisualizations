@@ -95,3 +95,6 @@ server <- function(input, output) {
 
 # Run the application 
 shinyApp(ui = ui, server = server)
+
+# Can be passed on to users to run directly from github:
+# runGitHub( "networkVisualizations", "nigradwohl")
