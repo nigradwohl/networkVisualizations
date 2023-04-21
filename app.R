@@ -9,6 +9,7 @@
 
 library(shiny)
 library(igraph)
+library(ggnetwork)
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
@@ -58,7 +59,31 @@ server <- function(input, output) {
         # Preferrential attachment:
         graph_pa <- sample_pa(n = 30, power = 2, directed = FALSE)
         
-        output$distPlot <- renderPlot({
+        
+        # Adding centralities:
+        # TODO
+            degree_distribution(graph_reg)
+            
+            betweenness(graph_reg)
+            eigen_centrality(graph_pa)
+            
+        # Adding asssortment:
+            # TODO
+            
+            tst <- ggplot(graph_reg,
+                   aes(x = x, y = y, xend = xend, yend = yend)) +
+                geom_edges(color = "darkgrey", size = 1,
+                           arrow = arrow(length = unit(8, "pt"), type = "closed")
+                )
+            
+            ggplot(ggnetwork(graph_reg, layout = layout_in_circle(graph_reg)),
+                   aes(x = x, y = y, xend = xend, yend = yend)) +
+                geom_edges(color = "darkgrey", size = 1,
+                           arrow = arrow(length = unit(8, "pt"), type = "closed")
+                )
+                
+            
+            output$distPlot <- renderPlot({
         
         # Select plot-type:
         # tst <- "b"
@@ -88,7 +113,19 @@ server <- function(input, output) {
                         "Ring lattice" = layout.circle(g_rewire),
                         "Preferential attachment" = layout.auto(g_rewire))
         
-        plot(g_rewire, layout = g_lay)
+        
+        # TODO: Make conditional
+        V(g_rewire)$label <- round(eigen_centrality(g_rewire)$vector, 2)
+        V(g_rewire)$label <- round(betweenness(g_rewire), 2)
+        
+        
+        # Plot:
+        plot(g_rewire, layout = g_lay,
+             vertex.label = V(g_rewire)$label,
+             vertex.size = 25)
+        
+        
+
         
     })
 }
