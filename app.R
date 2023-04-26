@@ -9,6 +9,7 @@
 
 library(shiny)
 library(igraph)
+library(unikn)
 library(ggnetwork)
 
 # Define UI for application that draws a histogram
@@ -36,6 +37,12 @@ ui <- fluidPage(
             
             sliderInput("p_rewire",
                         "p(rewire):",
+                        min = 0,
+                        max = 1,
+                        value = 0),
+            
+            sliderInput("p_a",
+                        "Proportion petrol:",
                         min = 0,
                         max = 1,
                         value = 0)
@@ -70,20 +77,39 @@ server <- function(input, output) {
         # Adding asssortment:
             # TODO
             
-            tst <- ggplot(graph_reg,
-                   aes(x = x, y = y, xend = xend, yend = yend)) +
-                geom_edges(color = "darkgrey", size = 1,
-                           arrow = arrow(length = unit(8, "pt"), type = "closed")
-                )
+            # Development area! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            pcol_a <- 0.5  # probability of a-nodes.
+            n <- 15
             
-            ggplot(ggnetwork(graph_reg, layout = layout_in_circle(graph_reg)),
+            n_a <- ceiling(n * pcol_a)
+            
+            # Determine colors randomly:
+            rancols <- c(rep("a", n_a), rep("b", n - n_a))
+            
+            V(graph_reg)$color <- rancols
+            colvec <- c(a = unname(Petrol), b = unname(Peach))
+            
+            assortativity(graph_reg, types1 = as.numeric(V(graph_reg)$color == "a"))
+
+            
+            ggplot(ggnetwork(graph_reg, layout = layout.circle(graph_reg)),
                    aes(x = x, y = y, xend = xend, yend = yend)) +
-                geom_edges(color = "darkgrey", size = 1,
-                           arrow = arrow(length = unit(8, "pt"), type = "closed")
-                )
+                geom_edges(color = "darkgrey", size = 1
+                           # arrow = arrow(length = unit(8, "pt"), type = "closed")
+                ) +
+                geom_nodes(aes(color = color, fill = color), size = 10) +
+                scale_color_manual(values = colvec) +
+                scale_fill_manual(values = colvec) +
+                guides(color = "none", fill = "none") +
+                theme_blank()
+            
+            
+            # eof. dev ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
                 
             
-            output$distPlot <- renderPlot({
+    output$distPlot <- renderPlot({
         
         # Select plot-type:
         # tst <- "b"
@@ -93,10 +119,12 @@ server <- function(input, output) {
             
             # TODO: Make the ring lattice flexible!
         
+        n_nodes <- input$n
+        
         g <- switch(input$graph,
                     "Ring lattice" = make_chordal_ring(n = 15,  # input$n,
                                                        matrix(rep(3, 3), nr = 1)),
-                    "Preferential attachment" = sample_pa(n = input$n, 
+                    "Preferential attachment" = sample_pa(n = n_nodes, 
                                                           power = 3, directed = FALSE))
         
 
@@ -119,10 +147,38 @@ server <- function(input, output) {
         V(g_rewire)$label <- round(betweenness(g_rewire), 2)
         
         
-        # Plot:
-        plot(g_rewire, layout = g_lay,
-             vertex.label = V(g_rewire)$label,
-             vertex.size = 25)
+        # Determine node types: -------------------------
+            
+            n_a <- ceiling(n_nodes * input$p_a)  # get requested type a.
+        
+            # Determine colors randomly:
+            rancols <- c(rep("a", n_a), rep("b", n_nodes - n_a))
+            
+            V(g_rewire)$color <- rancols
+            colvec <- c(a = unname(Petrol), b = unname(Peach))
+            
+        
+        # Determine assortment: -------------------------
+            gr_ass <- assortativity(g_rewire, types1 = as.numeric(V(g_rewire)$color == "a"))
+        
+        
+        
+        # Plot: -----------------------------------------
+        # plot(g_rewire, layout = g_lay,
+        #      vertex.label = V(g_rewire)$label,
+        #      vertex.size = 25)
+        
+            ggplot(ggnetwork(g_rewire, layout = layout.circle(g_rewire)),
+                   aes(x = x, y = y, xend = xend, yend = yend)) +
+                geom_edges(color = "darkgrey", size = 1
+                           # arrow = arrow(length = unit(8, "pt"), type = "closed")
+                ) +
+                geom_nodes(aes(color = color, fill = color), size = 10) +
+                scale_color_manual(values = colvec) +
+                scale_fill_manual(values = colvec) +
+                guides(color = "none", fill = "none") +
+                labs(caption = paste0("Assortativität = ", sprintf("%.2f", round(gr_ass, 2)))) +
+                theme_blank()
         
         
 
