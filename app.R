@@ -146,7 +146,7 @@ server <- function(input, output) {
                                                               p.or.m = input$p_rewire, 
                                                               type = "gnp"),
                     "Random (Small World)" = watts.strogatz.game(1, size = n_nodes, 
-                                                                 nei = 1, 
+                                                                 nei = 3, 
                                                                  p = input$p_rewire, loops = FALSE, multiple = FALSE),
                     # TODO: Sensibel defaults for random graphs or make flexible!
                     "Ring lattice" = make_chordal_ring(n = 15,  # input$n,
