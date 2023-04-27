@@ -25,6 +25,7 @@ ui <- fluidPage(
             selectInput("graph",
                         "Graph type",
                         choices = list("Ring lattice",
+                                       "Ring",
                                        "Preferential attachment",
                                        "Fully connected"),
                         multiple = FALSE),
@@ -91,7 +92,7 @@ server <- function(input, output) {
             # Determine colors randomly:
             rancols <- c(rep("a", n_a), rep("b", n - n_a))
             
-            V(g_rewire)$color <- rancols
+            V(g_rewire)$color <- sample(rancols)
             colvec <- c(a = unname(Petrol), b = unname(Peach))
             
             gr_ass <- assortativity(g_rewire, types1 = as.numeric(V(g_rewire)$color == "a"))
@@ -113,7 +114,10 @@ server <- function(input, output) {
                 scale_color_manual(values = colvec) +
                 scale_fill_manual(values = colvec) +
                 guides(color = "none", fill = "none") +
-                labs(caption = paste0("Assortativität = ", sprintf("%.2f", round(gr_ass, 2)))) +
+                labs(caption = paste0("Assortativität = ", sprintf("%.2f", round(gr_ass, 2)),
+                                      "\n",
+                                      "Dichte = ", sprintf("%.2f", round(edge_density(g_rewire))))
+                     ) +
                 theme_blank() +
                 theme(plot.caption = element_text(size = 12))
             
@@ -138,6 +142,7 @@ server <- function(input, output) {
         g <- switch(input$graph,
                     "Ring lattice" = make_chordal_ring(n = 15,  # input$n,
                                                        matrix(rep(3, 3), nr = 1)),
+                    "Ring" = make_ring(n = n_nodes),
                     "Preferential attachment" = sample_pa(n = n_nodes, 
                                                           power = 3, directed = FALSE),
                     "Fully connected" = make_full_graph(n = n_nodes))
@@ -153,8 +158,8 @@ server <- function(input, output) {
         
         # Determine layout:
         g_lay <- switch(input$graph,
-                        "Ring lattice" = layout.circle(g_rewire),
-                        "Preferential attachment" = layout.auto(g_rewire))
+                        "Preferential attachment" = layout.auto(g_rewire),
+                        layout.circle(g_rewire))
         
         
         # TODO: Make conditional
@@ -171,20 +176,23 @@ server <- function(input, output) {
                 # Determine colors randomly:
                 rancols <- c(rep("a", n_a), rep("b", n_nodes - n_a))
                 
-                V(g_rewire)$color <- rancols
+                V(g_rewire)$color <- sample(rancols)
                 colvec <- c(a = unname(Petrol), b = unname(Peach))
                 
             # Centrality on each node: ----------------------
                 V(g_rewire)$degree <- degree(g_rewire)
                 V(g_rewire)$between <- betweenness(g_rewire)
                 V(g_rewire)$eigen <- eigen_centrality(g_rewire)$vector
+                
             
         # GRAPH-LEVEL FAETUERS: -------------------------
             # Determine assortment: -------------------------
                 gr_ass <- assortativity(g_rewire, types1 = as.numeric(V(g_rewire)$color == "a"))
         
             
-                gr_dia <- diameter(g_rewire)
+                gr_dia <- diameter(g_rewire)  # diameter.
+                
+                gr_dens <- edge_density(g_rewire)  # density.
 
             
         
@@ -194,7 +202,8 @@ server <- function(input, output) {
         #      vertex.size = 25)
         
             cur_graph <- ggplot(ggnetwork(g_rewire, layout = g_lay),
-                   aes(x = x, y = y, xend = xend, yend = yend)) +
+                   aes(x = x, y = y, xend = xend, yend = yend),
+                   curvature = 15) +
                 geom_edges(color = "darkgrey", size = 1
                            # arrow = arrow(length = unit(8, "pt"), type = "closed")
                 ) +
@@ -205,7 +214,9 @@ server <- function(input, output) {
                 guides(color = "none", fill = "none") +
                 labs(caption = paste0("Assortativität = ", sprintf("%.2f", round(gr_ass, 2)),
                                       "\n",
-                                      "Durchmesser =", gr_dia)
+                                      "Durchmesser =", gr_dia,
+                                      "\n",
+                                      "Dichte = ", sprintf("%.2f", round(gr_dens, 2)))
                      ) +
                 theme_blank() +
                 theme(plot.caption = element_text(size = 12))
@@ -214,9 +225,9 @@ server <- function(input, output) {
                     cur_graph + 
                     geom_nodetext(aes(label = paste0("Grad=", degree, 
                                                      "\n", 
-                                                     "Zws=", sprintf("%.2f", round(between)),
+                                                     "Zws=", sprintf("%.2f", round(between, 2)),
                                                      "\n",
-                                                     "Eig=", sprintf("%.2f", round(eigen)))),
+                                                     "Eig=", sprintf("%.2f", round(eigen, 2)))),
                                   hjust = 0,
                                   nudge_x = 0.01, nudge_y = -0.01,
                                   size = 3)
