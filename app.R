@@ -24,7 +24,9 @@ ui <- fluidPage(
         sidebarPanel(
             selectInput("graph",
                         "Graph type",
-                        choices = list("Ring lattice",
+                        choices = list("Random (Erdös Renyi)",
+                                       "Random (Small World)",
+                                       "Ring lattice",
                                        "Ring",
                                        "Preferential attachment",
                                        "Fully connected"),
@@ -41,7 +43,7 @@ ui <- fluidPage(
                         "p(rewire):",
                         min = 0,
                         max = 1,
-                        step = 0.1,
+                        step = 0.05,
                         value = 0),
             
             sliderInput("p_a",
@@ -140,6 +142,13 @@ server <- function(input, output) {
         n_nodes <- input$n
         
         g <- switch(input$graph,
+                    "Random (Erdös Renyi)" = erdos.renyi.game(n = n_nodes, 
+                                                              p.or.m = input$p_rewire, 
+                                                              type = "gnp"),
+                    "Random (Small World)" = watts.strogatz.game(1, size = n_nodes, 
+                                                                 nei = 1, 
+                                                                 p = input$p_rewire, loops = FALSE, multiple = FALSE),
+                    # TODO: Sensibel defaults for random graphs or make flexible!
                     "Ring lattice" = make_chordal_ring(n = 15,  # input$n,
                                                        matrix(rep(3, 3), nr = 1)),
                     "Ring" = make_ring(n = n_nodes),
@@ -153,8 +162,12 @@ server <- function(input, output) {
         
         # g <- graph_reg
         
-        g_rewire <- rewire(g, 
-                             with = each_edge(prob = input$p_rewire))
+        if(!input$graph == "Random (Erdös Renyi)"){
+            # No additional rewiring:
+            g_rewire <- rewire(g, 
+                               with = each_edge(prob = input$p_rewire))
+        }
+
         
         # Determine layout:
         g_lay <- switch(input$graph,
