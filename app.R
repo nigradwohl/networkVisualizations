@@ -206,6 +206,8 @@ server <- function(input, output) {
                 gr_dia <- diameter(g_rewire)  # diameter.
                 
                 gr_dens <- edge_density(g_rewire)  # density.
+                
+                gr_centr <- centralization.degree(g_rewire)$centralization  # centralization.
 
             
         
@@ -225,12 +227,15 @@ server <- function(input, output) {
                 scale_color_manual(values = colvec) +
                 scale_fill_manual(values = colvec) +
                 guides(color = "none", fill = "none") +
-                labs(caption = paste0("Assortativität = ", sprintf("%.2f", round(gr_ass, 2)),
-                                      "\n",
-                                      "Durchmesser =", gr_dia,
-                                      "\n",
-                                      "Dichte = ", sprintf("%.2f", round(gr_dens, 2)))
-                     ) +
+                    labs(caption = paste0("Durchmesser =", gr_dia,
+                                          "\n",
+                                          "Zentralisierung = ", sprintf("%.2f", round(gr_centr, 2)),
+                                          "\n",
+                                          "Dichte = ", sprintf("%.2f", round(gr_dens, 2)),
+                                          "\n",
+                                          "Assortativität = ", sprintf("%.2f", round(gr_ass, 2))
+                    )
+                    ) +
                 theme_blank() +
                 theme(plot.caption = element_text(size = 12))
                 
