@@ -77,55 +77,86 @@ server <- function(input, output) {
         
         g_rewire <- graph_pa
         
-        # Adding centralities:
-        # TODO
-            # degree_distribution(g_rewire)
-            
-            # betweenness(g_rewire)  # Show this distribution?
-            
 
             
             # Development area! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            pcol_a <- 0.5  # probability of a-nodes.
-            n <- 15
-            
-            n_a <- ceiling(n * pcol_a)
-            
-            # Determine colors randomly:
-            rancols <- c(rep("a", n_a), rep("b", n - n_a))
-            
-            V(g_rewire)$color <- sample(rancols)
-            colvec <- c(a = unname(Petrol), b = unname(Peach))
-            
-            gr_ass <- assortativity(g_rewire, types1 = as.numeric(V(g_rewire)$color == "a"))
-            
-            betweenness(g_rewire) 
-            
-            V(g_rewire)$degree <- degree(g_rewire)
-
-            
-            ggplot(ggnetwork(g_rewire, layout = layout.circle(g_rewire)),
-                   aes(x = x, y = y, xend = xend, yend = yend)) +
-                geom_edges(color = "darkgrey", size = 1
-                           # arrow = arrow(length = unit(8, "pt"), type = "closed")
-                ) +
-                geom_nodes(aes(color = color, fill = color), size = 10) +
-                # geom_nodetext_repel(aes(label = degree)) +
-                geom_nodetext(aes(label = paste0("Grad=", degree)),
-                              nudge_x = 0.05, nudge_y = -0.01) +
-                scale_color_manual(values = colvec) +
-                scale_fill_manual(values = colvec) +
-                guides(color = "none", fill = "none") +
-                labs(caption = paste0("Assortativität = ", sprintf("%.2f", round(gr_ass, 2)),
-                                      "\n",
-                                      "Dichte = ", sprintf("%.2f", round(edge_density(g_rewire))))
-                     ) +
-                theme_blank() +
-                theme(plot.caption = element_text(size = 12))
-            
-            
+            # pcol_a <- 0.5  # probability of a-nodes.
+            # n <- 15
+            # 
+            # n_a <- ceiling(n * pcol_a)
+            # 
+            # # Determine colors randomly:
+            # rancols <- c(rep("a", n_a), rep("b", n - n_a))
+            # 
+            # V(g_rewire)$color <- sample(rancols)
+            # colvec <- c(a = unname(Petrol), b = unname(Peach))
+            # 
+            # gr_ass <- assortativity(g_rewire, types1 = as.numeric(V(g_rewire)$color == "a"))
+            # 
+            # betweenness(g_rewire) 
+            # 
+            # V(g_rewire)$degree <- degree(g_rewire)
+            # 
+            # 
+            # ggplot(ggnetwork(g_rewire, layout = layout.circle(g_rewire)),
+            #        aes(x = x, y = y, xend = xend, yend = yend)) +
+            #     geom_edges(color = "darkgrey", size = 1
+            #                # arrow = arrow(length = unit(8, "pt"), type = "closed")
+            #     ) +
+            #     geom_nodes(aes(color = color, fill = color), size = 10) +
+            #     # geom_nodetext_repel(aes(label = degree)) +
+            #     geom_nodetext(aes(label = paste0("Grad=", degree)),
+            #                   nudge_x = 0.05, nudge_y = -0.01) +
+            #     scale_color_manual(values = colvec) +
+            #     scale_fill_manual(values = colvec) +
+            #     guides(color = "none", fill = "none") +
+            #     labs(caption = paste0("Assortativität = ", sprintf("%.2f", round(gr_ass, 2)),
+            #                           "\n",
+            #                           "Dichte = ", sprintf("%.2f", round(edge_density(g_rewire))))
+            #          ) +
+            #     theme_blank() +
+            #     theme(plot.caption = element_text(size = 12))
             # eof. dev ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+
+    # Graph creating and rewiring:
+
+                     
+         cur_graph <- reactive({
+             
+             n_nodes <- input$n
+             
+             switch(input$graph,
+                     "Random (Erdös Renyi)" = erdos.renyi.game(n = n_nodes, 
+                                                               p.or.m = input$p_rewire, 
+                                                               type = "gnp"),
+                     "Random (Small World)" = watts.strogatz.game(1, size = n_nodes, 
+                                                                  nei = 3, 
+                                                                  p = input$p_rewire, loops = FALSE, multiple = FALSE),
+                     # TODO: Sensibel defaults for random graphs or make flexible!
+                     "Ring lattice" = make_chordal_ring(n = 15,  # input$n,
+                                                        matrix(rep(3, 3), nr = 1)),
+                     "Ring" = make_ring(n = n_nodes),
+                     "Preferential attachment" = sample_pa(n = n_nodes, 
+                                                           power = 3, directed = FALSE),
+                     "Fully connected" = make_full_graph(n = n_nodes))
+         
+         # TODO: Add Judd-type layout (3 fully conencted graphs)?
+         })
+         
+         
+         g_rewire <- reactive({
+             cur_graph <- cur_graph()
+             
+         if(!input$graph == "Random (Erdös Renyi)"){
+             # No additional rewiring:
+              rewire(cur_graph, with = each_edge(prob = input$p_rewire))
+         } else {
+             cur_graph
+             }
+         })
+         
+         # print(g_rewire)
 
                 
             
@@ -139,40 +170,14 @@ server <- function(input, output) {
             
             # TODO: Make the ring lattice flexible!
         
-        n_nodes <- input$n
-        
-        g <- switch(input$graph,
-                    "Random (Erdös Renyi)" = erdos.renyi.game(n = n_nodes, 
-                                                              p.or.m = input$p_rewire, 
-                                                              type = "gnp"),
-                    "Random (Small World)" = watts.strogatz.game(1, size = n_nodes, 
-                                                                 nei = 3, 
-                                                                 p = input$p_rewire, loops = FALSE, multiple = FALSE),
-                    # TODO: Sensibel defaults for random graphs or make flexible!
-                    "Ring lattice" = make_chordal_ring(n = 15,  # input$n,
-                                                       matrix(rep(3, 3), nr = 1)),
-                    "Ring" = make_ring(n = n_nodes),
-                    "Preferential attachment" = sample_pa(n = n_nodes, 
-                                                          power = 3, directed = FALSE),
-                    "Fully connected" = make_full_graph(n = n_nodes))
-        
 
-        
-        # TODO: Allow flexible layout!
-        
-        # g <- graph_reg
-        
-        if(!input$graph == "Random (Erdös Renyi)"){
-            # No additional rewiring:
-            g_rewire <- rewire(g, 
-                               with = each_edge(prob = input$p_rewire))
-        }
-
+        g_rewire <- g_rewire()  # get rewired graph.
         
         # Determine layout:
         g_lay <- switch(input$graph,
                         "Preferential attachment" = layout.auto(g_rewire),
-                        layout.circle(g_rewire))
+                        layout.circle(g_rewire)
+        )
         
         
         # TODO: Make conditional
@@ -200,7 +205,9 @@ server <- function(input, output) {
             
         # GRAPH-LEVEL FAETUERS: -------------------------
             # Determine assortment: -------------------------
-                gr_ass <- assortativity(g_rewire, types1 = as.numeric(V(g_rewire)$color == "a"))
+                gr_ass <- assortativity(g_rewire, 
+                                                types1 = as.numeric(V(g_rewire)$color == "a"),
+                                                directed = TRUE)
         
             
                 gr_dia <- diameter(g_rewire)  # diameter.
