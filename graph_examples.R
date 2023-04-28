@@ -1,6 +1,22 @@
 library(igraph)
 
 
+# Example graph in presentation:
+  adjmat <- cbind(c(0, 0, 0, 0, 0),
+                  c(0, 0, 1, 0, 0),
+                  c(0, 1, 0, 1, 1),
+                  c(0, 0, 1, 0, 1),
+                  c(0, 0, 0, 1, 0))
+  
+  gr <- graph_from_adjacency_matrix(adjmat)
+  
+  V(gr)$color <- c(2, 2, 1, 1, 1)
+  
+  plot(gr, layout = layout.circle(gr),
+       nodecolor = V(gr)$color)
+  
+  assortativity_nominal(gr, types = V(gr)$color, directed = TRUE)
+
 # lattice graph: -------------------------------
   graph_reg <- make_chordal_ring(15,
                                  matrix(rep(3, 3), nr = 1))
