@@ -209,9 +209,12 @@ server <- function(input, output) {
             
         # GRAPH-LEVEL FAETUERS: -------------------------
             # Determine assortment: -------------------------
-                gr_ass <- assortativity(g_rewire, 
-                                                types1 = as.numeric(V(g_rewire)$color == "a"),
-                                                directed = TRUE)
+                # gr_ass <- assortativity(g_rewire, 
+                #                                 types1 = as.numeric(V(g_rewire)$color == "a"),
+                #                                 directed = TRUE)
+                gr_ass <- assortativity_nominal(g_rewire, 
+                                        types = as.numeric(V(g_rewire)$color == "a") + 1,
+                                        directed = TRUE)
         
             
                 gr_dia <- diameter(g_rewire)  # diameter.
