@@ -122,3 +122,36 @@ library(igraph)
   
   # TODO: check component_wise()
   
+  
+# Simple model example: ---------------------------
+  library(ggplot2)
+
+  dat <- data.frame(
+    mude = seq(-2, 2, by = 0.1)
+  )
+
+  dat$doof <- ifelse(dat$mude < 1,
+                     exp(1),
+                     exp(dat$mude)) - 2
+  
+  
+  ggplot(data = dat, aes(x = mude, y = doof)) +
+    geom_line(size = 2, color = "black", alpha = 0.8) +
+    theme_classic() +
+    labs(x = "Müde", y = "Doof") +
+    ylim(0, 10) +
+    theme(text = element_text(size = 18))
+  
+  
+  # Add "data":
+  dat$data <- ifelse(dat$mude < 0,
+                     3,
+                     exp(dat$mude))
+  
+  ggplot(data = dat, aes(x = mude, y = doof)) +
+    geom_line(size = 2, color = "black", alpha = 0.8) +
+    theme_classic() +
+    labs(x = "Müde", y = "Doof") +
+    ylim(0, 10) +
+    theme(text = element_text(size = 18))
+  
