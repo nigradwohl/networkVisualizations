@@ -6,14 +6,42 @@ library(igraph)
                   c(0, 0, 1, 0, 0),
                   c(0, 1, 0, 1, 1),
                   c(0, 0, 1, 0, 1),
-                  c(0, 0, 0, 1, 0))
+                  c(1, 0, 0, 1, 0))
   
   gr <- graph_from_adjacency_matrix(adjmat)
   
   V(gr)$color <- c(2, 2, 1, 1, 1)
   
+  
+  ## End(Not run)
+  curve_multiple(gr, start = 0)
+  
+  
   plot(gr, layout = layout.circle(gr),
-       nodecolor = V(gr)$color)
+       nodecolor = V(gr)$color,
+       edge.curved = 0.2)
+  
+  assortativity_nominal(gr, types = V(gr)$color, directed = TRUE)
+  
+  #    a   b
+  # a 5/8 1/8  6/8
+  # b 2/8 0/8  2/8
+  #   7/8 1/8
+  
+  ai_bi <- (5/8+2/8) * (5/8+1/8) +  # row-col a_i.
+    (2/8+0/8) * (1/8 + 0/8) # b-row + bcol.
+    
+    
+  (5/8 - ai_bi) / (1 - ai_bi)
+  
+  # Disssortative:
+  gr <- make_ring(n = 4, directed = FALSE)
+  
+  V(gr)$color <- c(2, 1, 2, 1)
+  
+  plot(gr, layout = layout.circle(gr),
+       nodecolor = V(gr)$color,
+       edge.curved = 0.2)
   
   assortativity_nominal(gr, types = V(gr)$color, directed = TRUE)
 
