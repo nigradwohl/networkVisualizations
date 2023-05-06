@@ -29,14 +29,27 @@ ui <- fluidPage(
                         value = 15),
             
             
+            # TODO: Change node color?
+            sliderInput("p_a",
+                        "Proportion petrol:",
+                        min = 0,
+                        max = 1,
+                        step = 0.1,
+                        value = 0),
+            
+            
             checkboxInput("show_nodelabs",
                           "Knotenlabels zeigen")
         ),
+
         
         # Show a plot of the generated distribution
         mainPanel(
             plotOutput("netPlot",
-                       click = "netPlot_click")
+                       click = "netPlot_click",
+                       hover = "netPlot_hover"),
+            
+            verbatimTextOutput("node_info")
         )
     )
 )
@@ -51,6 +64,8 @@ server <- function(input, output) {
         cur_edges <- c()
         
         cur_n_nodes <- 15
+        
+        colvec <- c(a = unname(Petrol), b = unname(Peach))
     
 
     
@@ -79,7 +94,8 @@ server <- function(input, output) {
             n_nodes <- length(V(g))
             # Determine node types: -------------------------
             
-            n_a <- ceiling(n_nodes * 0.5)  # get requested type a.
+            # n_a <- ceiling(n_nodes * 0.5)  # get requested type a.
+                n_a <- ceiling(n_nodes * input$p_a)  # get requested type a.
             # TODO
             
             # Determine colors randomly:
@@ -98,7 +114,9 @@ server <- function(input, output) {
                 # Get where the click was:
                 pts <- nearPoints(as.data.frame(gnet),
                                   input$netPlot_click,
-                                  addDist = FALSE)
+                                  addDist = FALSE,
+                                  threshold = 10,
+                                  maxpoints = 1)
 
             # print(pts)
 
@@ -110,9 +128,10 @@ server <- function(input, output) {
                 if(length(sel_nodes) == 2){
                     
                     
-                    
+                    if(var(sel_nodes) > 0){
                     # Add the edge to the (persistent) list!
                         cur_edges <<- c(cur_edges, sel_nodes)
+                    }
                         
                     # Deal with duplicates:
                         edgemat <- matrix(cur_edges, ncol = 2, byrow = 2)
@@ -143,141 +162,123 @@ server <- function(input, output) {
             
             return(g)
     })
+        
     
-    # g_update <- reactive({
-    #     # Selection process:
-    #     gnet <- gcur()  # intermediate network.
-    #     
-    #     
-    #     # pts <- nearPoints(as.data.frame(gnet), 
-    #     #            input$netPlot_click, 
-    #     #            addDist = FALSE)
-    #     
-    #     # print(pts)
-    #     
-    #     # Determine layout:
-    #     g_lay <- layout.circle(gnet)
-    #     
-    #     
-    #     # TODO: Current issue is that the whle function is called again!
-    #     
-    #     # curnet <<- ggnetwork(g, layout = g_lay)  # global assignment.
-    #     pts <- nearPoints(as.data.frame(ggnetwork(gnet, g_lay)), 
-    #                       input$netPlot_click, 
-    #                       addDist = FALSE)
-    #     
-    #     print(pts)
-    #     
-    #     # gcur()
-    #     
-    #     # Save selected nodes globally:
-    #     sel_nodes <<- c(sel_nodes, pts$name)
-    #     
-    #     if(length(sel_nodes) == 2){
-    #         
-    #         gnet <- add.edges(gnet, sel_nodes)
-    #         
-    #         # Nullify:
-    #         sel_nodes <<- c()
-    #     }
-    #     
-    #     # Render selected nodes:
-    #     V(gnet)$selected <- ifelse(V(gnet)$name %in% sel_nodes, TRUE, FALSE)
-    #     
-    #     return(ggnetwork(gnet, layout = g_lay))
-    # })
+    # Build the current graph:
+        cur_g <- reactive({
+            
+            # gcur <- gcur()  # curnet  # non-reactive... # gcur()  
+            gcur <- gcur()  # get the igraph object.
+            
+            # print(gcur)
+            
+            # Determine layout:
+            g_lay <- layout.circle(gcur)
+            
+            
+            
+            # Centrality on each node: ----------------------
+                V(gcur)$degree <- degree(gcur, loops = FALSE)
+                V(gcur)$indegree <- degree(gcur, mode = "in", loops = FALSE)
+                V(gcur)$outdegree <- degree(gcur, mode = "out", loops = FALSE)
+                V(gcur)$between <- betweenness(gcur)
+                V(gcur)$eigen <- eigen_centrality(gcur)$vector
+            
+            
+            # Determine assortment: -------------------------
+                # gr_ass <- assortativity(g_rewire, 
+                #                                 types1 = as.numeric(V(g_rewire)$color == "a"),
+                #                                 directed = TRUE)
+                gr_ass <- assortativity_nominal(gcur, 
+                                                types = as.numeric(V(gcur)$color == "a") + 1,
+                                                directed = TRUE)
+                
+                
+                gr_dia <- diameter(gcur)  # diameter.
+                
+                gr_dens <- edge_density(gcur)  # density.
+                
+                gr_centr <- centralization.degree(gcur)$centralization  # centralization.
+                
+                cur_g <- ggnetwork(gcur, layout = g_lay,
+                                   arrow.gap = 0.03)
+            
+            return(list(cur_g = cur_g,
+                        graph_attr = c(gr_ass = gr_ass,
+                                       gr_dia = gr_dia,
+                                       gr_dens = gr_dens,
+                                       gr_centr = gr_centr)))
+        })
+        
+    # TODO: Hover over nodes to see properties?
+        observeEvent(input$netPlot_hover,
+                     {
+
+                         print("Hovering!")
+                         cur_g <- cur_g()
+                         # gcur <- gcur()  # get the igraph object.
+                         np <- nearPoints(as.data.frame(cur_g$cur_g),
+                                          input$netPlot_hover,
+                                          addDist = FALSE,
+                                          threshold = 5,
+                                          maxpoints = 1)
+                         print(np)
+                         
+                         # As tooltip?
+                         # https://ebailey78.github.io/shinyBS/docs/Tooltips_and_Popovers.html
+                     })
+        
+        
+        output$node_info <- renderText({
+            cur_g <- cur_g()
+            
+            np <- nearPoints(as.data.frame(cur_g$cur_g),
+                             input$netPlot_hover,
+                             addDist = FALSE,
+                             threshold = 5,
+                             maxpoints = 1)
+            
+            degree_all <- paste0("Grad: ", round(np["degree"], 2), 
+                                 " (in: ", round(np["indegree"], 2), ", ",
+                                 "out: ", round(np["outdegree"], 2), ")")
+            
+            paste0(
+                c("", "\nZwischenzentralität: ", "\nEigenvektor: "), 
+                c(degree_all, round(np[c("between", "eigen")], 2)), 
+                sep = "\n")
+
+        })
     
-    # Functions to (a) select node and (b) create links to other nodes:
-    # TODO
-    # For collecting information about the plot:
-    # https://shiny.rstudio.com/gallery/plot-interaction-selecting-points.html
-    # https://stackoverflow.com/questions/39916465/click-events-for-visnetwork-with-shiny
-    # Additional js?
-    # https://stackoverflow.com/questions/32057164/adding-hyperlinks-to-shiny-plots
-    
-    # https://stackoverflow.com/questions/46354853/using-linked-brushing-with-a-network-graph-from-ggraph-in-a-shiny-app
-    
-    
-    
-    # TODO: Save node info in current data!
-    
-    # Listen to info:
-    # observeEvent(input$netPlot_click,
-    #              {
-    #                  pts <- nearPoints(as.data.frame(gcur()), 
-    #                                    input$netPlot_click, 
-    #                                    addDist = FALSE)
-    #                  
-    #                  print(pts)
-    #                  
-    #                  # gcur()
-    #                  
-    #                  sel_nodes <<- c(sel_nodes, pts$name)
-    #                  print(sel_nodes)
-    # 
-    #              })
-    
+   
     # Plot output:
     output$netPlot <- renderPlot({
         
-        colvec <- c(a = unname(Petrol), b = unname(Peach))
-
-        # gcur <- gcur()  # curnet  # non-reactive... # gcur()  
-            gcur <- gcur()  # get the igraph object.
+        cur_g <- cur_g()
         
-            # print(gcur)
-        
-        # Determine layout:
-            g_lay <- layout.circle(gcur)
-        
-        
-        
-        # Centrality on each node: ----------------------
-            V(gcur)$degree <- degree(gcur)
-            V(gcur)$between <- betweenness(gcur)
-            V(gcur)$eigen <- eigen_centrality(gcur)$vector
-        
-        
-        # Determine assortment: -------------------------
-            # gr_ass <- assortativity(g_rewire, 
-            #                                 types1 = as.numeric(V(g_rewire)$color == "a"),
-            #                                 directed = TRUE)
-            gr_ass <- assortativity_nominal(gcur, 
-                                            types = as.numeric(V(gcur)$color == "a") + 1,
-                                            directed = TRUE)
-            
-            
-            gr_dia <- diameter(gcur)  # diameter.
-            
-            gr_dens <- edge_density(gcur)  # density.
-            
-            gr_centr <- centralization.degree(gcur)$centralization  # centralization.
-        
-            cur_g <- ggnetwork(gcur, layout = g_lay,
-                               arrow.gap = 0.03)
+        # print(cur_g$cur_g)
             
         # Plot: ------------------------------
-            cur_graph <- ggplot(cur_g,
+            cur_graph <- ggplot(cur_g$cur_g,
                    aes(x = x, y = y, xend = xend, yend = yend),
                    curvature = 15) +
                 geom_edges(color = "darkgrey", size = 1,
                            arrow = arrow(length = unit(8, "pt"), type = "closed",
                                          )
                 ) +
-                geom_nodes(data = cur_g[cur_g$selected,],
+                geom_nodes(data = cur_g$cur_g[cur_g$cur_g$selected,],
                            color = "black", fill = "black", size = 15) +
                 geom_nodes(aes(color = color, fill = color), size = 10) +
                 # geom_nodetext_repel(aes(label = degree)) +
                 scale_color_manual(values = colvec) +
                 scale_fill_manual(values = colvec) +
                 guides(color = "none", fill = "none", size = "none") +
-                labs(caption = paste0("Durchmesser =", gr_dia,
+                labs(caption = paste0("Durchmesser =", cur_g$graph_attr["gr_dia"],
                                       "\n",
-                                      "Zentralisierung = ", sprintf("%.2f", round(gr_centr, 2)),
+                                      "Zentralisierung = ", sprintf("%.2f", round(cur_g$graph_attr["gr_centr"], 2)),
                                       "\n",
-                                      "Dichte = ", sprintf("%.2f", round(gr_dens, 2)),
+                                      "Dichte = ", sprintf("%.2f", round(cur_g$graph_attr["gr_dens"], 2)),
                                       "\n",
-                                      "Assortativität = ", sprintf("%.2f", round(gr_ass, 2))
+                                      "Assortativität = ", sprintf("%.2f", round(cur_g$graph_attr["gr_ass"], 2))
                 )
                 ) +
                 theme_blank() +
