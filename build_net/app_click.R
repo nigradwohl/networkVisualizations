@@ -10,6 +10,8 @@
 
 library(shiny)
 library(igraph)
+library(unikn)
+library(ggnetwork)
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
@@ -27,6 +29,16 @@ ui <- fluidPage(
                         max = 50,
                         step = 1,
                         value = 15),
+            
+            selectInput("graph",
+                        "Graph type",
+                        choices = list("Random (Erdös Renyi)",
+                                       "Random (Small World)",
+                                       "Ring lattice",
+                                       "Ring",
+                                       "Preferential attachment",
+                                       "Fully connected"),
+                        multiple = FALSE),
             
             
             # TODO: Change node color?
@@ -66,6 +78,10 @@ server <- function(input, output) {
         cur_n_nodes <- 15
         
         colvec <- c(a = unname(Petrol), b = unname(Peach))
+        
+        cur_graph_type <- "Random (Erdös Renyi)"
+        
+        seed_small_world <- sample(0:99999)
     
 
     
@@ -73,18 +89,45 @@ server <- function(input, output) {
     gcur <- reactive({
         
         # Create graph without connections:
-            g <- erdos.renyi.game(n = input$n, 
-                             p.or.m = 0, 
-                             type = "gnp",
-                             directed = TRUE)
+            # g <- erdos.renyi.game(n = input$n, 
+            #                  p.or.m = 0, 
+            #                  type = "gnp",
+            #                  directed = TRUE)
+        
+        n_nodes <- input$n
+        
+        # TODO: Currently adding and removing (but not only removing) is possible!
+        
+        set.seed(seed_small_world)
+        g <- switch(input$graph,
+               "Random (Erdös Renyi)" = erdos.renyi.game(n = n_nodes, 
+                                                         p.or.m = 0, 
+                                                         type = "gnp",
+                                                         directed = TRUE),
+               "Random (Small World)" = watts.strogatz.game(1, size = n_nodes, 
+                                                            nei = 3, 
+                                                            p = 0.2, loops = FALSE, multiple = FALSE),
+               # TODO: Sensibel defaults for random graphs or make flexible!
+               "Ring lattice" = make_chordal_ring(n = 15,  # input$n,
+                                                  matrix(rep(3, 3), nr = 1),
+                                                  directed = TRUE),
+               "Ring" = make_ring(n = n_nodes,
+                                  directed = TRUE, mutual = TRUE  # make mutual edges the default.
+                                  ),
+               "Preferential attachment" = sample_pa(n = n_nodes, 
+                                                     power = 3, directed = TRUE),
+               "Fully connected" = make_full_graph(n = n_nodes),
+               directed = TRUE)
         
             # Determine layout:
             g_lay <- layout.circle(g)
         
             # If the current number of nodes changed:
-                if(cur_n_nodes != input$n){
+                if(cur_n_nodes != input$n | cur_graph_type != input$graph){
                     sel_nodes <<- c()
-                    cur_edges <<- c()
+                    cur_edges <<- c(t(get.edgelist(g)))
+                    
+                    cur_graph_type <<- input$graph
                 }
             
             # Save the current number of nodes:
