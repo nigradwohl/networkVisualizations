@@ -16,10 +16,15 @@ library(igraph)
   ## End(Not run)
   curve_multiple(gr, start = 0)
   
-  
+
+  # Add edges:
+  gr <- add.edges(gr, c(1, 2, 5, 3))
+    
   plot(gr, layout = layout.circle(gr),
        nodecolor = V(gr)$color,
        edge.curved = 0.2)
+  
+
   
   assortativity_nominal(gr, types = V(gr)$color, directed = TRUE)
   
