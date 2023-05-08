@@ -254,22 +254,22 @@ server <- function(input, output) {
         })
         
     # TODO: Hover over nodes to see properties?
-        observeEvent(input$netPlot_hover,
-                     {
-
-                         print("Hovering!")
-                         cur_g <- cur_g()
-                         # gcur <- gcur()  # get the igraph object.
-                         np <- nearPoints(as.data.frame(cur_g$cur_g),
-                                          input$netPlot_hover,
-                                          addDist = FALSE,
-                                          threshold = 5,
-                                          maxpoints = 1)
-                         print(np)
-                         
-                         # As tooltip?
-                         # https://ebailey78.github.io/shinyBS/docs/Tooltips_and_Popovers.html
-                     })
+        # observeEvent(input$netPlot_hover,
+        #              {
+        # 
+        #                  # print("Hovering!")
+        #                  cur_g <- cur_g()
+        #                  # gcur <- gcur()  # get the igraph object.
+        #                  np <- nearPoints(as.data.frame(cur_g$cur_g),
+        #                                   input$netPlot_hover,
+        #                                   addDist = FALSE,
+        #                                   threshold = 5,
+        #                                   maxpoints = 1)
+        #                  print(np)
+        #                  
+        #                  # As tooltip?
+        #                  # https://ebailey78.github.io/shinyBS/docs/Tooltips_and_Popovers.html
+        #              })
         
         
         output$node_info <- renderText({
