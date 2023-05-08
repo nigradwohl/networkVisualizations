@@ -227,6 +227,9 @@ server <- function(input, output) {
         V(gcur)$between <- betweenness(gcur)
         V(gcur)$eigen <- eigen_centrality(gcur)$vector
         
+        # print(transitivity(gcur, type = "local"))
+        V(gcur)$trans <- transitivity(gcur, type = "local")
+        
         
         # Determine assortment: -------------------------
         # gr_ass <- assortativity(g_rewire, 
@@ -243,6 +246,8 @@ server <- function(input, output) {
         
         gr_centr <- centralization.degree(gcur)$centralization  # centralization.
         
+        gr_trans <- transitivity(gcur)
+        
         cur_g <- ggnetwork(gcur, layout = g_lay,
                            arrow.gap = 0.03)
         
@@ -250,7 +255,8 @@ server <- function(input, output) {
                     graph_attr = c(gr_ass = gr_ass,
                                    gr_dia = gr_dia,
                                    gr_dens = gr_dens,
-                                   gr_centr = gr_centr)))
+                                   gr_centr = gr_centr,
+                                   gr_trans = gr_trans)))
     })
     
     # TODO: Hover over nodes to see properties?
@@ -286,8 +292,8 @@ server <- function(input, output) {
                              "out: ", round(np["outdegree"], 2), ")")
         
         paste0(
-            c("", "\nZwischenzentralität: ", "\nEigenvektor: "), 
-            c(degree_all, round(np[c("between", "eigen")], 2)), 
+            c("", "\nZwischenzentralität: ", "\nEigenvektor: ", "\nTransitivität: "), 
+            c(degree_all, round(np[c("between", "eigen", "trans")], 2)), 
             sep = "\n")
         
     })
@@ -320,6 +326,8 @@ server <- function(input, output) {
                                   "Zentralisierung = ", sprintf("%.2f", round(cur_g$graph_attr["gr_centr"], 2)),
                                   "\n",
                                   "Dichte = ", sprintf("%.2f", round(cur_g$graph_attr["gr_dens"], 2)),
+                                  "\n",
+                                  "Transitivität = ", sprintf("%.2f", round(cur_g$graph_attr["gr_trans"], 2)),
                                   "\n",
                                   "Assortativität = ", sprintf("%.2f", round(cur_g$graph_attr["gr_ass"], 2))
             )
