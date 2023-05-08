@@ -5,9 +5,10 @@ account: nigradwohl
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 9018500
-bundleId: 7168764
+bundleId: 7187845
 url: https://nigradwohl.shinyapps.io/networkVisualizations/
-when: 1683120454.45514
-lastSyncTime: 1683120454.45514
+when: 1683531465.00111
+lastSyncTime: 1683531465.00111
 asMultiple: FALSE
 asStatic: FALSE
+ignoredFiles: build_net/app_click.R|fdep_data.png|fdep_full.png|fdep_full_data.png|fdep_simple.png|graph_examples.R|mude_doof1.png|mude_doof2.png|SIR.png
