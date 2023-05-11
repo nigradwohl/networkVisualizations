@@ -50,6 +50,13 @@ ui <- fluidPage(
                         value = 0),
             
             
+            # Re-add p_rewire
+            # shinyWidgets::sliderTextInput("p_rewire","p(rewire):",
+            #                               choices=c(seq(0, 0.2, by = 0.02),
+            #                                         seq(0.3, 1, by = 0.1)),
+            #                               selected=0, grid = TRUE),
+            
+            
             checkboxInput("show_nodelabs",
                           "Knotenlabels zeigen")
         ),
