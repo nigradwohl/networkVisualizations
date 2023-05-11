@@ -34,8 +34,9 @@ ui <- fluidPage(
                         "Graph type",
                         choices = list("Random (Erdös Renyi)",
                                        "Random (Small World)",
-                                       "Ring lattice",
                                        "Ring",
+                                       "Ring lattice",
+                                       "Lattice",
                                        "Preferential attachment",
                                        "Fully connected"),
                         multiple = FALSE),
@@ -51,10 +52,10 @@ ui <- fluidPage(
             
             
             # Re-add p_rewire
-            # shinyWidgets::sliderTextInput("p_rewire","p(rewire):",
-            #                               choices=c(seq(0, 0.2, by = 0.02),
-            #                                         seq(0.3, 1, by = 0.1)),
-            #                               selected=0, grid = TRUE),
+            shinyWidgets::sliderTextInput("p_rewire","p(rewire):",
+                                          choices=c(seq(0, 0.2, by = 0.02),
+                                                    seq(0.3, 1, by = 0.1)),
+                                          selected=0, grid = TRUE),
             
             
             checkboxInput("show_nodelabs",
@@ -83,10 +84,11 @@ server <- function(input, output) {
     cur_edges <- c()
     
     cur_n_nodes <- 15
+    cur_p_rewire <- 0
     
     colvec <- c(a = unname(Petrol), b = unname(Peach))
     
-    cur_graph_type <- "Random (Erdös Renyi)"
+    cur_graph_type <- "Random (Erdös Renyi)"  # default graph.
     
     seed_small_world <- sample(0:99999)
     
@@ -108,16 +110,19 @@ server <- function(input, output) {
         set.seed(seed_small_world)
         g <- switch(input$graph,
                     "Random (Erdös Renyi)" = erdos.renyi.game(n = n_nodes, 
-                                                              p.or.m = 0, 
+                                                              p.or.m = input$p_rewire, 
                                                               type = "gnp",
                                                               directed = TRUE),
                     "Random (Small World)" = watts.strogatz.game(1, size = n_nodes, 
                                                                  nei = 3, 
-                                                                 p = 0.2, loops = FALSE, multiple = FALSE),
+                                                                 p = input$p_rewire, loops = FALSE, multiple = FALSE),
                     # TODO: Sensibel defaults for random graphs or make flexible!
                     "Ring lattice" = make_chordal_ring(n = 15,  # input$n,
                                                        matrix(rep(3, 3), nr = 1),
                                                        directed = TRUE),
+                    "Lattice" = make_lattice(dimvector = c(n_nodes %/% 2,
+                                                           n_nodes %/% 2 + n_nodes %% 2),
+                                             directed = TRUE),  # fix to 2 dimensions for now.
                     "Ring" = make_ring(n = n_nodes,
                                        directed = TRUE, mutual = TRUE  # make mutual edges the default.
                     ),
@@ -127,14 +132,19 @@ server <- function(input, output) {
                     directed = TRUE)
         
         # Determine layout:
-        g_lay <- layout.circle(g)
+        g_lay <- switch(input$graph,
+                        "Preferential attachment" = layout.auto(g),
+                        "Lattice" = layout.auto(g),
+                        layout.circle(g)
+        )
         
-        # If the current number of nodes changed:
-        if(cur_n_nodes != input$n | cur_graph_type != input$graph){
+        # If the current number of nodes, graph type, or rewiring probability changed:
+        if(cur_n_nodes != input$n | cur_graph_type != input$graph | cur_p_rewire != input$p_rewire){
             sel_nodes <<- c()
             cur_edges <<- c(t(get.edgelist(g)))
             
             cur_graph_type <<- input$graph
+            cur_p_rewire <<- input$p_rewire
         }
         
         # Save the current number of nodes:
@@ -223,7 +233,11 @@ server <- function(input, output) {
         # print(gcur)
         
         # Determine layout:
-        g_lay <- layout.circle(gcur)
+        g_lay <- switch(input$graph,
+                        "Preferential attachment" = layout.auto(gcur),
+                        "Lattice" = layout.auto(gcur),
+                        layout.circle(gcur)
+        )
         
         
         
