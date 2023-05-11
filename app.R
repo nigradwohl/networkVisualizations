@@ -107,7 +107,7 @@ server <- function(input, output) {
         
         # TODO: Currently adding and removing (but not only removing) is possible!
         
-        set.seed(seed_small_world)
+        set.seed(seed_small_world)  # set seed for small world networks!
         g <- switch(input$graph,
                     "Random (Erdös Renyi)" = erdos.renyi.game(n = n_nodes, 
                                                               p.or.m = input$p_rewire, 
@@ -141,7 +141,7 @@ server <- function(input, output) {
         # If the current number of nodes, graph type, or rewiring probability changed:
         if(cur_n_nodes != input$n | cur_graph_type != input$graph | cur_p_rewire != input$p_rewire){
             sel_nodes <<- c()
-            cur_edges <<- c(t(get.edgelist(g)))
+            cur_edges <<- ends(g, unique(E(g)))  # E(g)  # c(t(get.edgelist(g)))
             
             cur_graph_type <<- input$graph
             cur_p_rewire <<- input$p_rewire
@@ -182,37 +182,81 @@ server <- function(input, output) {
         
         # gcur()
         
+        print(cur_edges)
+        
         # Save selected nodes globally:
         sel_nodes <<- c(sel_nodes, pts$name)
+
+        print(sel_nodes)
         
         if(length(sel_nodes) == 2){
             
             
             if(var(sel_nodes) > 0){
-                # Add the edge to the (persistent) list!
-                cur_edges <<- c(cur_edges, sel_nodes)
-            }
-            
-            # Deal with duplicates:
-            edgemat <- matrix(cur_edges, ncol = 2, byrow = 2)
-            rem <- edgemat[duplicated(edgemat)]  # entries to remove.
-            
-            if(any(duplicated(edgemat))){
-                row_rem <- rowSums(edgemat == rem[col(edgemat)]) == ncol(edgemat)  # rows to remove.
-                edgemat <- edgemat[!row_rem, ]  # remove nodes.
                 
-                # Update the current edges:
-                cur_edges <<- c(t(edgemat))
+              # Check if already connected:
+              if(are.connected(g, sel_nodes[1], sel_nodes[2])){
+                
+                print("DELETE EDGE!")
+                g <- delete_edges(g, sel_nodes)
+                
+                
+              } else {
+                
+                print("ADD EDGE!")
+                g <- add.edges(g, sel_nodes)  # add unique edges.
+                
+              }
+              
+              # Update persistent list:
+              # print(unique(E(g)))
+              cur_edges <<- rbind(cur_edges,
+                                  ends(g, unique(E(g)))) # unique(E(g)) # c(t(get.edgelist(g)))
+              
+              print(cur_edges)
+              # Add the edge to the (persistent) list!
+                # cur_edges <<- c(cur_edges, sel_nodes)
+              
+                
             }
+            
+            # # Deal with duplicates:
+            # edgemat <- matrix(cur_edges, ncol = 2, byrow = 2)
+            # rem <- edgemat[duplicated(edgemat)]  # entries to remove.
+            # 
+            # if(any(duplicated(edgemat))){
+            #     row_rem <- rowSums(edgemat == rem[col(edgemat)]) == ncol(edgemat)  # rows to remove.
+            #     edgemat <- edgemat[!row_rem, ]  # remove nodes.
+            #     
+            #     # Update the current edges:
+            #     cur_edges <<- c(t(edgemat))
+            # }
             
             # print(edgemat)
             
-            # Nullify the selected nodes:
+            # Nullify the selected nodes (whether the same or not):
             sel_nodes <<- c()
         }
         
+        # print("Blah!")
         # Add edges:
-        g <- add.edges(g, cur_edges)
+        if(length(cur_edges) > 0){
+          
+          g <- add.edges(g, c(t(cur_edges)))
+          
+          # print(cur_edges)
+          cur_edges <<- ends(g, unique(E(g)))
+          # g <- add.edges(g, as.vector(cur_edges))
+          # print(cur_edges)
+          # if(!is.null(cur_edges)){
+          #   E(g) <- cur_edges
+          # } else {
+          #   g <- add.edges(g, cur_edges)
+          # }
+          
+        }
+
+
         
         
         # Render selected node(s):
@@ -339,6 +383,7 @@ server <- function(input, output) {
                        color = "black", fill = "black", size = 15) +
             geom_nodes(aes(color = color, fill = color), size = 10) +
             # geom_nodetext_repel(aes(label = degree)) +
+            geom_nodetext(aes(label = name)) +  # for testing.
             scale_color_manual(values = colvec) +
             scale_fill_manual(values = colvec) +
             guides(color = "none", fill = "none", size = "none") +
