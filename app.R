@@ -89,6 +89,10 @@ server <- function(input, output) {
     colvec <- c(a = unname(Petrol), b = unname(Peach))
     
     cur_graph_type <- "Random (Erdös Renyi)"  # default graph.
+    g <<- erdos.renyi.game(n = cur_n_nodes, 
+                           p.or.m = cur_p_rewire, 
+                           type = "gnp",
+                           directed = TRUE)
     
     seed_small_world <- sample(0:99999)
     
@@ -107,29 +111,47 @@ server <- function(input, output) {
         
         # TODO: Currently adding and removing (but not only removing) is possible!
         
-        set.seed(seed_small_world)  # set seed for small world networks!
-        g <- switch(input$graph,
-                    "Random (Erdös Renyi)" = erdos.renyi.game(n = n_nodes, 
-                                                              p.or.m = input$p_rewire, 
-                                                              type = "gnp",
-                                                              directed = TRUE),
-                    "Random (Small World)" = watts.strogatz.game(1, size = n_nodes, 
-                                                                 nei = 3, 
-                                                                 p = input$p_rewire, loops = FALSE, multiple = FALSE),
-                    # TODO: Sensibel defaults for random graphs or make flexible!
-                    "Ring lattice" = make_chordal_ring(n = 15,  # input$n,
-                                                       matrix(rep(3, 3), nr = 1),
-                                                       directed = TRUE),
-                    "Lattice" = make_lattice(dimvector = c(n_nodes %/% 2,
-                                                           n_nodes %/% 2 + n_nodes %% 2),
-                                             directed = TRUE),  # fix to 2 dimensions for now.
-                    "Ring" = make_ring(n = n_nodes,
-                                       directed = TRUE, mutual = TRUE  # make mutual edges the default.
-                    ),
-                    "Preferential attachment" = sample_pa(n = n_nodes, 
-                                                          power = 3, directed = TRUE),
-                    "Fully connected" = make_full_graph(n = n_nodes),
-                    directed = TRUE)
+        
+        
+        # If the current number of nodes, graph type, or rewiring probability changed:
+        if(cur_n_nodes != input$n | cur_graph_type != input$graph | cur_p_rewire != input$p_rewire){
+            
+          # Update the graph as needed:
+          set.seed(seed_small_world)  # set seed for small world networks!
+          g <<- switch(input$graph,
+                      "Random (Erdös Renyi)" = erdos.renyi.game(n = n_nodes, 
+                                                                p.or.m = input$p_rewire, 
+                                                                type = "gnp",
+                                                                directed = TRUE),
+                      "Random (Small World)" = watts.strogatz.game(1, size = n_nodes, 
+                                                                   nei = 3, 
+                                                                   p = input$p_rewire, loops = FALSE, multiple = FALSE),
+                      # TODO: Sensibel defaults for random graphs or make flexible!
+                      "Ring lattice" = make_chordal_ring(n = 15,  # input$n,
+                                                         matrix(rep(3, 3), nr = 1),
+                                                         directed = TRUE),
+                      "Lattice" = make_lattice(dimvector = c(n_nodes %/% 2,
+                                                             n_nodes %/% 2 + n_nodes %% 2),
+                                               directed = TRUE),  # fix to 2 dimensions for now.
+                      "Ring" = make_ring(n = n_nodes,
+                                         directed = TRUE, mutual = TRUE  # make mutual edges the default.
+                      ),
+                      "Preferential attachment" = sample_pa(n = n_nodes, 
+                                                            power = 3, directed = TRUE),
+                      "Fully connected" = make_full_graph(n = n_nodes),
+                      directed = TRUE)
+        
+          
+          
+          # Update persistent measures:
+            sel_nodes <<- c()
+            cur_edges <<- ends(g, unique(E(g)))  # E(g)  # c(t(get.edgelist(g)))
+            
+            cur_graph_type <<- input$graph
+            cur_p_rewire <<- input$p_rewire
+            
+            
+        }
         
         # Determine layout:
         g_lay <- switch(input$graph,
@@ -137,15 +159,6 @@ server <- function(input, output) {
                         "Lattice" = layout.auto(g),
                         layout.circle(g)
         )
-        
-        # If the current number of nodes, graph type, or rewiring probability changed:
-        if(cur_n_nodes != input$n | cur_graph_type != input$graph | cur_p_rewire != input$p_rewire){
-            sel_nodes <<- c()
-            cur_edges <<- ends(g, unique(E(g)))  # E(g)  # c(t(get.edgelist(g)))
-            
-            cur_graph_type <<- input$graph
-            cur_p_rewire <<- input$p_rewire
-        }
         
         # Save the current number of nodes:
         cur_n_nodes <<- input$n
@@ -161,10 +174,10 @@ server <- function(input, output) {
         # Determine colors randomly:
         rancols <- c(rep("a", n_a), rep("b", n_nodes - n_a))
         
-        V(g)$color <- rancols  # sample(rancols)
+        V(g)$color <<- rancols  # sample(rancols)
         colvec <- c(a = unname(Petrol), b = unname(Peach))
         
-        V(g)$name <- 1:length(V(g))
+        V(g)$name <<- 1:length(V(g))
         
         # TODO: Allow to change node color through clicking?
         
@@ -182,14 +195,20 @@ server <- function(input, output) {
         
         # gcur()
         
-        print(cur_edges)
+        # print(cur_edges)
         
         # Save selected nodes globally:
         sel_nodes <<- c(sel_nodes, pts$name)
-
-        print(sel_nodes)
+# 
+#         print("Selected:")
+#         print(sel_nodes)
+        
+        print(V(g)$name)
+        print(V(g))
         
         if(length(sel_nodes) == 2){
+          
+          
             
             
             if(var(sel_nodes) > 0){
@@ -197,23 +216,27 @@ server <- function(input, output) {
               # Check if already connected:
               if(are.connected(g, sel_nodes[1], sel_nodes[2])){
                 
-                print("DELETE EDGE!")
-                g <- delete_edges(g, sel_nodes)
+                # print("DELETE EDGE!")
+                # print(t(get.edgelist(g)))
+                # print("Selected:")
+                # print(sel_nodes)
+                # print(t(get.edgelist(g)) == sel_nodes)
+                g <<- delete_edges(g, which(colSums(t(get.edgelist(g)) == sel_nodes) == 2))
                 
                 
               } else {
                 
                 print("ADD EDGE!")
-                g <- add.edges(g, sel_nodes)  # add unique edges.
+                g <<- add.edges(g, sel_nodes)  # add unique edges.
                 
               }
               
               # Update persistent list:
               # print(unique(E(g)))
-              cur_edges <<- rbind(cur_edges,
-                                  ends(g, unique(E(g)))) # unique(E(g)) # c(t(get.edgelist(g)))
-              
-              print(cur_edges)
+              # cur_edges <<- rbind(cur_edges,
+              #                     ends(g, unique(E(g)))) # unique(E(g)) # c(t(get.edgelist(g)))
+              # 
+              # print(cur_edges)
               # Add the edge to the (persistent) list!
                 # cur_edges <<- c(cur_edges, sel_nodes)
               
@@ -240,21 +263,21 @@ server <- function(input, output) {
         
         # print("Blah!")
         # Add edges:
-        if(length(cur_edges) > 0){
-          
-          g <- add.edges(g, c(t(cur_edges)))
-          
-          # print(cur_edges)
-          cur_edges <<- ends(g, unique(E(g)))
-          # g <- add.edges(g, as.vector(cur_edges))
-          # print(cur_edges)
-          # if(!is.null(cur_edges)){
-          #   E(g) <- cur_edges
-          # } else {
-          #   g <- add.edges(g, cur_edges)
-          # }
-          
-        }
+        # if(length(cur_edges) > 0){
+        #   
+        #   g <- add.edges(g, c(t(cur_edges)))
+        #   
+        #   # print(cur_edges)
+        #   cur_edges <<- ends(g, unique(E(g)))
+        #   # g <- add.edges(g, as.vector(cur_edges))
+        #   # print(cur_edges)
+        #   # if(!is.null(cur_edges)){
+        #   #   E(g) <- cur_edges
+        #   # } else {
+        #   #   g <- add.edges(g, cur_edges)
+        #   # }
+        #   
+        # }
 
 
         
@@ -264,7 +287,12 @@ server <- function(input, output) {
         
         # print(curnet)
         
-        return(g)
+        print(g)
+        print(E(g))
+        
+        g <<- g
+        
+        # return(g)
     })
     
     
@@ -272,8 +300,9 @@ server <- function(input, output) {
     cur_g <- reactive({
         
         # gcur <- gcur()  # curnet  # non-reactive... # gcur()  
-        gcur <- gcur()  # get the igraph object.
+        gcur()  # get the igraph object.
         
+        gcur <- g
         # print(gcur)
         
         # Determine layout:
