@@ -126,7 +126,7 @@ server <- function(input, output) {
                       "Random (Small World)" = watts.strogatz.game(1, size = n_nodes, 
                                                                    nei = 3, 
                                                                    p = input$p_rewire, loops = FALSE, multiple = FALSE),
-                      # TODO: Sensibel defaults for random graphs or make flexible!
+                      # TODO: Sensible defaults for random graphs or make flexible!
                       "Ring lattice" = make_chordal_ring(n = 15,  # input$n,
                                                          matrix(rep(3, 3), nr = 1),
                                                          directed = TRUE),
@@ -140,7 +140,13 @@ server <- function(input, output) {
                                                             power = 3, directed = TRUE),
                       "Fully connected" = make_full_graph(n = n_nodes),
                       directed = TRUE)
+          
+          # Fix layout for grid and PA:
+          if(input$graph %in% c("Lattice", "Preferential attachment")){
+              layfix <<- layout.auto(g)
+          }
         
+          # TODO: Implement rewiring?
           
           
           # Update persistent measures:
@@ -155,8 +161,10 @@ server <- function(input, output) {
         
         # Determine layout:
         g_lay <- switch(input$graph,
-                        "Preferential attachment" = layout.auto(g),
-                        "Lattice" = layout.auto(g),
+                        "Preferential attachment" = layfix,
+                        "Lattice" = layfix,
+                        # "Preferential attachment" = layout.star(g),
+                        # "Lattice" = layout_on_grid(g),
                         layout.circle(g)
         )
         
@@ -307,8 +315,8 @@ server <- function(input, output) {
         
         # Determine layout:
         g_lay <- switch(input$graph,
-                        "Preferential attachment" = layout.auto(gcur),
-                        "Lattice" = layout.auto(gcur),
+                        "Preferential attachment" = layfix,  # layout.star(gcur),
+                        "Lattice" = layfix,  # layout_on_grid(gcur),
                         layout.circle(gcur)
         )
         
